@@ -1,1 +1,0 @@
-"0","plot(log(Weight) ~ log(Girth), data = lao)"

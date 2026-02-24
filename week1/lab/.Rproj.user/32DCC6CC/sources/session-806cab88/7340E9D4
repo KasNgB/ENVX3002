@@ -3,9 +3,9 @@
     "path": "~/ENVX3002/week1/lab/Exercise1.Rmd",
     "project_path": "Exercise1.Rmd",
     "type": "r_markdown",
-    "hash": "1264155067",
+    "hash": "0",
     "contents": "",
-    "dirty": false,
+    "dirty": true,
     "created": 1771907162389.0,
     "source_on_save": false,
     "relative_order": 1,
@@ -13,8 +13,8 @@
         "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "50,15",
-        "scrollLine": "42",
+        "cursorPosition": "93,16",
+        "scrollLine": "81",
         "rmdVisualMode": "false",
         "rmdVisualCollapsedChunks": ""
     },
@@ -23,7 +23,7 @@
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1771912310379,
+    "last_content_update": 1771913839123,
     "read_only": false,
     "read_only_alternatives": []
 }

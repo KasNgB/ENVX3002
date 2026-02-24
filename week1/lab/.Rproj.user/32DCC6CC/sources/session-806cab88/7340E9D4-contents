@@ -36,17 +36,19 @@ plot(log(Weight) ~ log(Girth), data = lao)
 abline(lao.lm, col = "red")
 ```
 
-#1e
+# 1e
 ```{r}
 Girth <- 160
-log_weight <- 2.731*log(Girth) - 8.258
+b0 <- coef(lao.lm)[1]
+b1 <- coef(lao.lm)[2]
+log_weight <- b1*log(Girth) + b0
 exp(log_weight)
 
 log_predict <- predict(lao.lm, data.frame(Girth = 160))
 exp(log_predict)
 ```
 
-#1f
+# 1f
 ```{r}
 library(ggplot2)
 
@@ -66,4 +68,28 @@ geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
 geom_point(data = lao, aes(x = Girth, y = Weight)) +
 ylab("Weight (kg)") + xlab("Girth (cm)") +
 theme_classic()
+```
+
+
+# 2a
+```{r}
+dippers <- read.csv("data/Breeding density of dippers.csv")
+```
+
+# 2b
+```{r}
+LogBrD1 <- log(dippers$Br_Dens+1)
+all.equal(LogBrD1, log(dippers$Br_Dens + 1))
+```
+
+# 2c 
+```{r}
+summary(dippers)
+```
+
+# 2d
+```{r}
+Altitude <- dippers$Altitude
+hist(Altitude)
+boxplot(Altitude)
 ```

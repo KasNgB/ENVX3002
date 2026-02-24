@@ -1,0 +1,69 @@
+---
+title: "Exercise 1"
+author: "Kasper Ng Bergan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# 1a
+```{r}
+lao <- read.csv("data/Lao cattle.csv", header = TRUE)
+str(lao)
+```
+
+# 1b
+```{r}
+plot(Weight ~ Girth, data = lao)
+plot(log(Weight) ~ log(Girth), data = lao)
+```
+My conclusion about linearity is that the data looks like it has a exponential pattern, the log transformation straightens the data out.
+
+# 1c
+```{r}
+lao.lm <- lm(log(Weight) ~ log(Girth), data = lao)
+summary(lao.lm)
+anova(lao.lm, test = "F")
+```
+log(Girth) close to all variation of log(Weight). I think it would be a useful method
+
+# 1d
+```{r}
+library(ggplot2)
+ggplot(data = lao, aes(x = log(Girth), y = log(Weight))) + geom_point() 
++ geom_smooth(method = "lm", se = FALSE, color = "red") + theme_classic()
+
+plot(log(Weight) ~ log(Girth), data = lao)
+abline(lao.lm, col = "red")
+```
+
+#1e
+```{r}
+Girth <- 160
+log_weight <- 2.731*log(Girth) - 8.258
+exp(log_weight)
+
+log_predict <- predict(lao.lm, data.frame(Girth = 160))
+exp(log_predict)
+```
+
+#1f
+```{r}
+library(ggplot2)
+
+summary(lao$Girth)
+Girth_values <- seq(50, 200, 5)
+lao.pred <- predict(lao.lm, data.frame(Girth + Girth_values), interval = "prediction")
+
+lao.pred
+is.matrix(lao.pred)
+is.data.frame(lao.pred)
+
+lao.girth.pred <- data.frame(Girth = seq(50, 200, 5), exp(lao.pred))
+
+ggplot(lao.girth.pred, aes(x = Girth, y = fit)) +
+geom_line() +
+geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
+geom_point(data = lao, aes(x = Girth, y = Weight)) +
+ylab("Weight (kg)") + xlab("Girth (cm)") +
+theme_classic()
+```

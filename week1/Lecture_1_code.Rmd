@@ -1,0 +1,357 @@
+---
+title: 'ENVX3002: Lecture 1'
+author: "Aaron Greenville"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Topic 1: Linear regression models
+
+## R output and notes
+
+### Simple Linear regression
+
+Read in the data and display: 
+*Note change file path to suit where you saved the data file*
+
+```{r}
+
+calves <- read.csv("Growth of calves.csv", header=TRUE)
+calves
+
+```
+
+Always good to plot the data to get a feel for it:
+
+```{r}
+plot(Weight ~ Age, data = calves)
+
+```
+
+
+
+#### Linear regression and anova
+
+```{r}
+calves.lm <- lm(Weight ~ Age, data = calves)
+calves.lm
+summary(calves.lm)
+
+anova(calves.lm, test = "F")
+
+```
+
+The fitted model is Weight = 12.949 + 12.867Age; Age is a highly significant predictor of Weight (P = 0.000136). R2 = 0.9565, i.e. 95.7% of variation in weights is explained by age.
+
+
+
+#### Plotting the results
+
+
+```{r}
+plot(Weight ~ Age, data = calves)
+
+abline(calves.lm) # add fitted regression line to plot
+```
+
+#### Plotting residual SS
+
+Creating a function to evaluate Residual SS as a function of b0 and b1:
+
+```{r}
+ResSS <- function(b0, b1) # Residual SS function
+{
+   fit <- b0 + b1 * calves$Age
+   res <- calves$Weight - fit
+   sum(res^2)
+}
+
+(164-13)/13 # # Approx. estimate of slope (13); approx. intercept ~ 13
+ResSS(13, 13) # ResSS near least squares solution
+ResSS(18, 12) # a little further away from the solution
+```
+
+ResSS if b0 = 13 and b1 = 13 is 743 Changing b1 to 12 produced a poorer fit (larger ResSS, 815). 
+
+
+Now evaluate ReSS over a fine grid of b0 = 5.0, 5.1, …, 20) × b1 = (10.00, 10.05, …, 15.00), and plot as a 3D surface, to visually evaluate least squares solution.
+
+
+```{r}
+# Make a range of b0 and b1 vlaues, calcuate Residual SS and plot over grid
+b0 <- seq(5,20,0.1)   # make a range of b0 values
+b1 <- seq(10,15,0.05) # make a range of b1 values
+RSS.calves <- outer(b0, b1, function(x,y) mapply(ResSS, x, y))
+
+library(fields) # for image.plot() function
+image.plot(b0, b1, RSS.calves)
+
+points(coef(calves.lm)[1], coef(calves.lm)[2], col = "white")
+
+```
+
+The ResSS surface displays as an elliptical surface with a minimum at b0 = 12.95 and b1 = 12.87, the value of ResSS being 737.7: all other values of b0 and b1 result in larger values of ResSS.
+
+```{r}
+
+coef(calves.lm) # our b0 and b1
+
+ResSS(coef(calves.lm)[1], coef(calves.lm)[2]) # value of residual SS
+```
+
+The value of the ResSS is also confirmed in the ANOVA table for the regression:
+
+```{r}
+anova(calves.lm)
+```
+
+#### Bonus: calculating the anova table manually:
+
+```{r}
+# Manually construct ANOVA table
+head(fitted(calves.lm))
+head(resid(calves.lm))
+reg.ss <- sum((fitted(calves.lm) - mean(calves$Weight))^2)
+reg.ss
+res.ss <- sum((calves$Weight - fitted(calves.lm))^2)
+res.ss
+tot.ss <- sum((calves$Weight - mean(calves$Weight))^2)
+tot.ss
+reg.ss + res.ss
+```
+
+#### Checking assumptions:
+
+```{r}
+par(mfrow = c(2,2))
+plot(calves.lm)
+par(mfrow = c(1,1))
+```
+
+Can you see any patterns above?
+
+### Multiple Linear regression
+
+```{r}
+fumes <- read.csv("Fumes.csv", header = TRUE)
+str(fumes)
+```
+
+
+
+```{r}
+# Exploratory histograms
+par(mfrow = c(2,2))
+hist(fumes$SO2)
+hist(log(fumes$SO2))
+hist(fumes$MANPLANT)
+hist(log(fumes$MANPLANT))
+par(mfrow = c(1,1)) # for tidy code. Set plotting window back to defaults 
+```
+
+Log-transformation makes both variables more symmetric.
+
+
+```{r}
+fumes.lm <- lm(log(SO2) ~ TEMP + WINDSPD + AVERRAIN + DAYSRAIN +
+   log(MANPLANT) + log(POPSIZE), data = fumes)
+
+attributes(fumes.lm)
+
+b <- fumes.lm$coef # not all letters are necessary
+b
+
+
+```
+
+
+```{r}
+
+summary(fumes.lm)
+
+```
+
+The overall regression is significant (F = 4.17; df = 6, 34; P = 0.003). However, only two predictors (DAYSRAIN, log(MANPLANT)) are statistically significant (P < 0.05). The drop1() function can also be used to assess significance of terms in the model. This is particularly useful when terms in the model ate factors with more than two levels more than 1 df, covered in Topic 2). However for quantitative predictors (1 df terms) the results of drop1() and summary() will be identical.
+
+Note: it depends on your question and modeling approach for how you do this step.
+
+```{r}
+drop1(fumes.lm, test = "F")
+```
+
+
+Undertaking residual diagnostic checks:
+```{r}
+par(mfrow = c(1,2))
+plot(fumes.lm, which = 1) # Residuals vs fitted values
+plot(fumes.lm, which = 2) # Normal Q-Q plot
+par(mfrow = c(1,1))
+```
+
+
+
+The Residual vs fitted value plot indicates the variance is stable. Observation #24 is a fairly large negative residua, associated with a relatively high fitted value. This would suggest a city which by its characteristics is expected to have high SO2 pollution, but in fact not nearly as high as predicted. However, this is not extreme enough to warrant removing from the data set. The normal Q-Q plot indicates the (standardised) residual are reasonably normally distributed. The major assumptions of the model can be taken as being met.
+
+
+The following shows an analysis on untransformed data. In particular, the plot of the standardised residuals vs fitted values shows a ‘fanning out’, i.e. a nonconstant variance, with would fail to meet the constant variance assumption.
+
+
+```{r}
+# Demonstrates need to log-transform
+fumes.nolog.lm <- lm(SO2 ~ TEMP + WINDSPD + AVERRAIN + DAYSRAIN + log(MANPLANT) + log(POPSIZE), data = fumes)
+
+par(mfrow = c(1,2))
+plot(fumes.nolog.lm, which = 1) # Residuals vs fitted values
+plot(fumes.nolog.lm, which = 2) # Normal Q-Q plot
+par(mfrow = c(1,1))
+
+```
+
+
+#### Model averaging
+
+
+Let's say we have a dataset with a response variable `y` and two predictor variables `x1` and `x2`. We'll fit three different linear models and perform model averaging using AIC.
+
+Lets simulate some data and fit three models:
+```{r}
+# Load necessary libraries
+library(MuMIn)
+
+# Simulate some data
+set.seed(123)
+n <- 10
+x1 <- rnorm(n)
+x2 <- rnorm(n)
+y <- 3 + 2 * x1 - x2 + rnorm(n)
+
+# Create a data frame
+data <- data.frame(y, x1, x2)
+
+
+head(data)
+
+
+```
+
+Fit three different models:
+```{r}
+# Fit multiple models
+model1 <- lm(y ~ x1, data = data)
+model2 <- lm(y ~ x2, data = data)
+model3 <- lm(y ~ x1 + x2, data = data)
+
+# Create a list of models
+models <- list(model1, model2, model3)
+```
+
+
+Perform model selection:
+```{r}
+
+# Perform model selection
+model_selection <- model.sel(models)
+model_avg <- model.avg(model_selection)
+
+# Print model selection table with AIC values and weights
+print(model_selection)
+
+```
+
+
+Perform model averaging:
+```{r}
+
+# if you want to restrict the model averaging to a subset of models
+# model_d7 <- get.models(model_selection, subset = delta < 7)
+
+# there are different methods for subset selection, see ?get.models for more details.
+
+# Perform model averaging
+model_avg <- model.avg(model_selection) # change to model_d7 to restrict to models with delta < 7
+
+# Print model-averaged coefficients
+print(summary(model_avg))
+
+```
+
+
+
+
+#### Bonus: Making predictions
+
+**Wait...what is the difference between a confidence interval and a prediction interval?**
+
+See this link for a nice explanation:
+https://towardsdatascience.com/how-confidence-and-prediction-intervals-work-4592019576d8 
+
+Estimated mean weight at 10 months:
+```{r}
+# Calf weight prediction
+predict(calves.lm, data.frame(Age = 10))
+```
+
+
+95% confidence interval for mean weight at 10 months:
+
+```{r}
+# Calf weight prediction
+predict(calves.lm, data.frame(Age = 10), interval = "confidence")
+```
+
+95% prediction interval for a weight at 10 months
+```{r}
+# Calf weight prediction
+predict(calves.lm, data.frame(Age = 10), interval = "prediction")
+```
+
+
+
+```{r}
+# Calf weight prediction
+calves.CI <- predict(calves.lm, data.frame(Age = seq(0, 12, 0.5)), interval = "confidence")
+calves.PI <- predict(calves.lm, data.frame(Age = seq(0, 12, 0.5)), interval = "prediction")
+
+plot(Weight ~ Age, ylim = c(0, 210), xlab = "Age (months)", ylab = "Weight (kg)", data = calves)
+abline(calves.lm)
+lines(calves.CI[,2] ~ seq(0, 12, 0.5), lty = 2, col = "blue")
+lines(calves.CI[,3] ~ seq(0, 12, 0.5), lty = 2, col = "blue")
+lines(calves.PI[,2] ~ seq(0, 12, 0.5), lty = 2, col = "red")
+lines(calves.PI[,3] ~ seq(0, 12, 0.5), lty = 2, col = "red")
+legend("topleft", c("95% CI", "95% PI"), lty = 2, col = c("blue", "red"))
+
+
+```
+
+Now make predictions for the Fumes data set, on a reduced model:
+```{r}
+# SO2 prediction
+fumes.lm1 <- lm(log(SO2) ~ DAYSRAIN + log(MANPLANT), data = fumes)
+summary(fumes.lm1)
+anova(fumes.lm1, fumes.lm) # partial F-test to confirm 4 predictors can be dropped
+
+
+```
+The patrial F-test indicate the full model with all six predictors is not significantly better than the reduced model with two predictors (F = 1.45; df = 4, 34; P = 0.238).
+For the predictions to be valid, we need to verify that DAYSRAIN = 100, MANPLANT = 500 is a reasonable pair of city attributes to make predictions for, i.e. we should not make extrapolations far outside the range of data actually used in the model fitting.
+
+
+
+The value to be predicted (shown by the red dot above) is within the observed data set, so it is valid to use the fitted model to make predictions:
+```{r}
+# Check where prediction is to be made
+with(fumes, plot(DAYSRAIN, MANPLANT))
+points(100, 500, pch = 21, bg = "red", cex = 2)
+
+```
+
+
+
+The estimated mean log(SO2) is 3.12 (95% CI: 2.88, 3.37). On the back-transformed scale, the mean SO2 value is 22.70 μg/m3 (95% CI: 17.73, 29.05):
+```{r}
+(fumes.CI <- predict(fumes.lm1, data.frame(DAYSRAIN = 100, MANPLANT = 500), interval = "confidence"))
+exp(fumes.CI)
+```
+
+

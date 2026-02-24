@@ -3,9 +3,9 @@
     "path": "~/ENVX3002/week1/lab/Exercise1.Rmd",
     "project_path": "Exercise1.Rmd",
     "type": "r_markdown",
-    "hash": "0",
+    "hash": "3553659835",
     "contents": "",
-    "dirty": true,
+    "dirty": false,
     "created": 1771907162389.0,
     "source_on_save": false,
     "relative_order": 1,
@@ -19,11 +19,11 @@
         "rmdVisualCollapsedChunks": ""
     },
     "folds": "",
-    "lastKnownWriteTime": 1771907205,
+    "lastKnownWriteTime": 1771914037,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1771913839123,
+    "last_content_update": 1771914037147,
     "read_only": false,
     "read_only_alternatives": []
 }

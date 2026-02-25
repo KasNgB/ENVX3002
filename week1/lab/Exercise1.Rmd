@@ -90,6 +90,83 @@ summary(dippers)
 # 2d
 ```{r}
 Altitude <- dippers$Altitude
-hist(Altitude)
-boxplot(Altitude)
+hist(Altitude,
+     main = "Histogram",
+     xlab = "Altitude")
+boxplot(Altitude,
+        main = "Boxplot")
+```
+
+# 2e 
+```{r}
+library(ggplot2)
+
+ggplot(dippers, aes(x = LogStone, y = LogBrD)) +
+geom_point() +
+theme_classic()
+
+plot(dippers$LogBrD ~ dippers$LogStone, data = dippers)
+
+pairs(dippers[,c(1:3, 9:13)], cex = 0.5)
+```
+
+# 2f 
+```{r}
+dippers.lm <- lm(dippers$LogBrD ~ dippers$Gradient, data = dippers)
+plot(dippers.lm)
+summary(dippers.lm)
+anova(dippers.lm)
+```
+
+# 2g
+```{r}
+dippers.lm2 <- lm(dippers$LogBrD ~ dippers$Altitude + dippers$Hardness + dippers$Gradient + dippers$LogCadd + dippers$LogStone + dippers$LogMay + dippers$LogOther, data = dippers)
+summary(dippers.lm2)
+anova(dippers.lm2)
+```
+
+# 2h
+```{r}
+drop1(dippers.lm2, test = "F")
+```
+
+# 2i
+```{r}
+dippers.lm3 <- lm(dippers$LogBrD ~ 1, data = dippers)
+anova(dippers.lm2, dippers.lm3)
+```
+
+# 2j
+```{r}
+dippers.lm4 <- lm(dippers$LogBrD ~ dippers$Altitude + dippers$Hardness + dippers$Gradient, data = dippers)
+anova(dippers.lm4, dippers.lm2)
+```
+
+# 2k
+```{r}
+library(MASS)
+dippers.lm5 <- stepAIC(dippers.lm2)
+```
+
+
+# 3a
+```{r}
+library(MuMIn)
+dippers.lm6 <- lm(dippers$LogBrD ~ dippers$Altitude + dippers$Hardness + dippers$Gradient + dippers$LogCadd + dippers$LogStone + dippers$LogMay + dippers$LogOther, data = dippers, na.action = na.fail)
+
+mod.sel <- dredge(dippers.lm6, rank = "AICc")
+mod.sel
+```
+
+# 3b
+```{r}
+mod.sel.top <- get.models(mod.sel, subset = delta < 4)
+
+mod.ave <- model.avg(mod.sel.top)
+summary(mod.ave)
+```
+
+# 3c 
+```{r}
+plot(mod.ave)
 ```

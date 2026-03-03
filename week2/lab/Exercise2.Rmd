@@ -1,0 +1,89 @@
+---
+title: "Exercise_week2"
+author: "Kasper Ng Bergan"
+date: "2026-03-03"
+output: html_document
+---
+
+# Before you begin
+```{r}
+library(lattice)
+```
+
+# Task 1a
+```{r}
+ryegrass <- read.csv("data/Perennial ryegrass.csv")
+ryegrass$Block <- as.factor(ryegrass$Block)
+str(ryegrass)
+```
+
+# Task 1b
+Yield_ijk = OverallMean + Block_i + Strain_j + WPlot_ij + Manure_k
+            + (Strain x Manure)_jk + e_ijk
+
+# Task 1c
+```{r}
+bwplot(Yield ~ Strain | Manuring, data=ryegrass)
+ryegrass.aov <- aov(Yield ~ Strain * Manuring + Error(Block/Strain), 
+                    data = ryegrass)
+ryegrass.aov1 <- aov(Yield ~ Strain * Manuring + Error(Block/Strain/Manuring), 
+                    data = ryegrass)
+ryegrass.aov
+ryegrass.aov1
+```
+
+# Task 1d
+```{r}
+plot(lm(ryegrass.aov), which = 1)
+plot(lm(ryegrass.aov), which = 2)
+```
+
+# Task 1e 
+```{r}
+summary(ryegrass.aov)
+```
+Residual MS = 835
+sub-plot/split-plot/Residual MS = 665
+
+# Task 1f
+Significant interaction 
+
+# Task 1g
+```{r}
+library(emmeans)
+
+emmeans(ryegrass.aov, c("Strain", "Manuring"))
+emmeans(ryegrass.aov, pairwise ~ Strain| Manuring)
+```
+
+# Task 1h
+```{r}
+ryegrass.aovf <- aov(Yield ~ Strain * Manuring + Block/Strain, data = ryegrass)
+summary(ryegrass.aov)
+summary(ryegrass.aovf)
+```
+
+# Task 2a
+```{r}
+frogPop <- read.csv("data/frog_population_data.csv")
+frogPop$Wetland <- as.factor(frogPop$Wetland)
+frogPop$Time <- as.factor(frogPop$Time)
+str(frogPop)
+```
+
+# Task 2b
+PopSize_ijk = Mean + Habitat_i + Time_j + WetlandRandomError_ijk 
+              + (Habitat x Time)_ij + e_ijk
+
+# Task 2c
+```{r}
+bwplot(PopulationSize ~ Time | Habitat, data=frogPop)
+frogPop.aov <- aov(PopulationSize ~ Habitat * Time + Error(Wetland/Habitat), 
+                    data = frogPop)
+frogPop.aov
+```
+
+# Task 2d
+```{r}
+
+```

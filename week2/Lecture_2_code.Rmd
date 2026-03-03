@@ -1,0 +1,228 @@
+---
+title: "ENVX3002 Topic 2: ANOVA and its Extensions: notes and code"
+author: "Aaron Greenville"
+output:
+  html_document:
+    highlight: tango
+    toc: yes
+    toc_float:
+      collapsed: no
+  pdf_document: default
+---
+
+
+## Set up packages
+
+```{r}
+library(lattice) 
+```
+
+
+## Fire blocking analysis
+
+```{r}
+fire <- read.csv("fire.csv")
+str(fire) # 'Site' initially as an integer, not a factor
+fire$Site <- as.factor(fire$Site)
+str(fire) # data frame now ready
+
+```
+
+```{r}
+# Fit ANOVA model
+fire.aov <- aov(SpRich ~ Site + Fire_treatment, data = fire)
+summary(fire.aov)
+
+```
+
+This analysis not differentiate between the two types of terms associated with the treatment structure and the blocking structure. However, for a simple blocking structure (as here), the analysis is still correct.
+
+```{r}
+# Now recognise the experimental design (RCBD) / blocking structure
+fire.aov1 <- aov(SpRich ~ Fire_treatment + Error(Site), data = fire)
+summary(fire.aov1)
+
+```
+
+
+Note the two parts of the ANOVA table, relating to the two strata of random variation, “Site” and “Within (Site)”. No F-statistic or P-value is given for “Site”, as this is a Residual (A) term, and cannot validly be tested in the same way that the means associated with the Treatment Structure (Fire_treatment) can be. Otherwise, the ANOVA table is identical to the one above (in `fire.aov`).
+
+In the following, the random error is added explicitly by specifying `Error(Site/Fire_treatment)` with `Error(Site:Fire_treatment)` being the random error.
+
+
+```{r}
+fire.aov2 <- aov(SpRich ~ Fire_treatment + Error(Site/Fire_treatment), data=fire)
+ summary(fire.aov2)
+```
+
+
+In this analysis, the “Error: Within” section of the ANOVA table is re-labelled “Error: Site:Fire_treatment” but otherwise is identical.
+
+Note that the tests for “Fire_treatment” is placed in this part of the table, not the “Error: Site” part of the table, because Fire_treatment were recorded at these individual level, not the overall Site level (since each Site received all treatments). 
+
+While use of the `Error()` specification was not essential in this example (simple blocking), with more complex blocking, as in the next section (split plot design), it is essential.
+
+
+## Split plot analysis
+
+### Analysis of the experimental data set
+```{r}
+lettuce <- read.csv("data/Lettuce yields.csv")
+str(lettuce)
+lettuce$Block <- as.factor(lettuce$Block)
+str(lettuce)
+```
+
+```{r}
+# Explore data
+bwplot(Yield ~ Variety | UDate, data = lettuce)
+```
+
+
+No obvious outliers in the data set, appears that different varieties respond differently to different uncovering dates (i.e. a variety × uncovering date interaction) but that needs to wait formal assessment in the ANOVA.
+
+
+```{r}
+# ANOVA and model check
+lettuce.aov <- aov(Yield ~ Variety * UDate + Error(Block/UDate), data = lettuce)
+
+par(mfrow=c(1,2))
+plot(lm(lettuce.aov), which = 1)
+plot(lm(lettuce.aov), which = 2)
+par(mfrow=c(1,1))
+
+```
+
+Note the necessity for `lm()` in `plot(lm(lettuce.aov), which = 1)`. Model fit is good: LHS shows residual variance is stable, RHS shows the residuals are normally distributed.
+
+
+```{r}
+summary(lettuce.aov)
+```
+
+UDate allocated at the whole plot level
+Variety allocated at the sub plot level
+
+### Post-hoc tests
+
+```{r}
+
+# install.packages("emmeans", dependencies = TRUE)
+
+library(emmeans)
+
+emmeans(lettuce.aov, pairwise ~ Variety| UDate)
+```
+
+
+```{r}
+
+plot(emmeans(lettuce.aov, c("Variety", "UDate")))
+
+```
+
+
+
+```{r}
+ emmip(lettuce.aov, UDate~ Variety, CIs = TRUE)
+```
+
+
+So any of the Variety × Uncovering Date combinations 
+
+
+
+## Repeated measures
+
+Reference: Logan 2010 Biostatistical Design and Analysis Using R: A Practical Guide 
+
+Driscoll and Roberts (1997) investigated the impact of fuel-reduction burning on the number  of individual male frogs calling. Matched burnt and unburnt sites were blocked within six drainages, and the difference in number of calling male frogs between the sites was recorded for each drainage on three occasions (a 1992 pre-burn and two post burns in 1993 and 1994). They were primarily interested in investigating whether the mean difference in number  of calling frogs between burn and control sites differed between years (from Box 10.2 of  Quinn and Keough (2002)). 
+
+
+```{r}
+driscoll <- read.table('driscoll.csv', header=T, sep=',')
+
+driscoll$YEAR <-factor(driscoll$YEAR)
+
+driscoll
+```
+
+
+
+```{r}
+
+
+boxplot(CALLS~YEAR, driscoll)
+
+```
+
+### test assumptions
+
+No evidence of unequal variance, and the hypothesis test should be robust enough to account for any potential non-normality.
+
+Investigate whether or not there is any evidence of a block by year x interaction.
+Residual plot can you see any patterns?
+
+```{r}
+#library(alr3)
+par(mfrow=c(1,2))
+plot(lm(CALLS~BLOCK+YEAR, driscoll), which =1)
+plot(lm(CALLS~BLOCK+YEAR, driscoll), which =2)
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+# interaction plot
+with(driscoll, interaction.plot(BLOCK, YEAR, CALLS))
+```
+
+
+
+```{r}
+ emmip(lm(CALLS~BLOCK+YEAR, driscoll), YEAR ~ BLOCK, CIs = TRUE)
+```
+
+
+No strong evidence of a blocking interaction
+
+
+Since, the levels of year cannot be randomized within each block (the order must always be 1, 2, 3), we might suspect that sphericity will be an issue. Consequently, we will calculate Greenhouse-Geisser and Huynh-Feldt epsilon values and adjust the hypothesis tests accordingly. 
+
+```{r}
+driscoll.aov <- aov(CALLS~Error(BLOCK)+YEAR, data=driscoll)
+
+summary(driscoll.aov)
+```
+
+
+
+```{r}
+
+#convert the data to wide format
+dris.rm <- reshape(driscoll, timevar = "YEAR", v.names = "CALLS", idvar = "BLOCK", direction = "wide")
+
+dris.rm
+```
+
+```{r}
+
+#install.packages("car", dependencies = TRUE)
+
+library(car)
+#fit the simple MANOVA
+dris.lm <- lm(cbind(CALLS.1, CALLS.2, CALLS.3) ~ 1, dris.rm)
+
+#create a data frame that defines the intra-block design
+idata <- data.frame(YEAR = as.factor(c(1, 2, 3)))
+
+#use the Anova (car) function to estimate the MANOVA test statistics
+av.ok <- Anova(dris.lm, idata = idata, idesign = ~YEAR)
+summary(av.ok)
+
+```
+
+
+The Greenhouse-Geisser epsilon (0.712) confirmed a deviation from sphericity and thus the Greenhouse-Geisser adjusted P-value (0.013) should be used. Analysis indicates that there was a significant effect of year (time prior or post fuel reduction burn) on the difference in number of males calling between burnt and unburnt sites. Multivariate tests for the within block effects, all concur that there is an effect of YEAR on the differences in number of male frogs calling. Whilst the Mauchly test for sphericity does not indicate a problem with sphericity (P=0.355), Greenhouse-Geisser epsilon suggest substantial departures from sphericity (0.712).
+
+In general, if the estimated epsilon (eps) is less than 0.75, it’s recommended to use the Greenhouse-Geisser correction. If the estimated epsilon is greater than 0.75, some statisticians recommend using the Huynh-Feldt correction.

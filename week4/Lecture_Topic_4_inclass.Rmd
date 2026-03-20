@@ -1,0 +1,431 @@
+---
+title: "ENVX3002 - Week4: Generalized Linear Models - I: Inclass exercises"
+author: "Floris van Ogtrop"
+date: "2025-02-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load required packages
+library(tidyverse)
+library(ggplot2)
+```
+
+## Binomial probabilities
+
+```{r}
+# Flow on exactly 2 days
+dbinom(2, 7, 0.6, log = FALSE)
+
+# Flow on 2 or greater days
+sum(dbinom(2:7, 7, 0.6, log = FALSE))
+
+# Flow on 2,3, or 4 days
+sum(dbinom(2:4, 7, 0.6, log = FALSE))
+
+# Dog - probability of failure
+# 1-0.65 = 0.35
+
+# Dog - up to 4 out of 10 ops successful
+sum(dbinom(0:4, 10, 0.65, log = FALSE))
+
+# Births - exactly 3 in 5
+dbinom(3, 5, 0.5, log = FALSE)
+
+# Births - at least 3
+sum(dbinom(0:3, 5, 0.5, log = FALSE))
+```
+
+## GLMs for Binary Data
+
+### Example 1 - Insect mortality - Logistic regression - proportional data i.e. n successes in N trials
+
+```{r}
+Insects <- read.csv("Insect_mortality.csv")
+head(Insects)
+
+#We need to calculate the proportion of insects killed from 
+#(i) insects killed (ii) insects sprayed
+Prop<-Insects$Killed/Insects$Insects
+
+#Adds proportional response to Insects data frame
+Insects$Proportion<-Prop
+
+head(Insects)
+```
+
+### Plot data
+
+```{r}
+plot(Insects$Dose,Insects$Proportion,xlab="Dose",ylab="Proportion killed")
+```
+
+### Lets try a linear model
+
+```{r}
+insect.lm <- lm(Proportion~Dose,data=Insects)
+
+#Lets see how the model looks
+plot(Insects$Dose,Insects$Proportion,xlab="Dose",ylab="Proportion killed",ylim=c(-0.1,1.1))
+abline(insect.lm)
+```
+
+### Now lets fit a GLM to proportional data
+
+Fitting a logistic model - glm function needs a special form of response
+The response is a 2-column matrix, 
+- 1st column holds number of successes, 
+- 2nd column holds the number of faliures 
+
+```{r}
+#Bind 2 columns - killed in column 1 and survived in colun 2
+SF <- cbind(killed = Insects$Killed, alive = Insects$Insects - Insects$Killed)
+
+#Make a data frame containing the predictor -"dose" and SF
+data.temp <- data.frame(Dose = Insects$Dose)
+data.temp$SF <- SF
+
+#Remove the free-standing SF object
+rm(SF)
+```
+
+```{r}
+#Fit the model using generalized linear model function 
+insect.glm <- glm(SF ~ Dose, data = data.temp, 	family = "binomial")
+summary(insect.glm)
+```
+
+### Interperet dose coefficient for an increase in dose by 0.1 units
+
+```{r}
+exp(insect.glm$coefficients[2]*0.1)
+```
+
+### Look at the fitted model
+
+First make a set of predictor values at which to calculate fitted values from the model - 100 values from 1.69 to 1.89
+
+```{r}
+logdose <- seq(1.69, 1.89, length = 100)
+```
+
+Calculate predicted values from model at each predictor value. Note 'type = "response"' in the code below results in predicted values on the back-transformed scale
+
+```{r}
+prob.pred.bt <- predict(insect.glm,newdata = data.frame(Dose = logdose), type = "response")
+```
+
+Plot observed values with fitted model superimposed
+
+```{r}
+plot(Insects$Dose,Insects$Proportion
+,xlab="Dose",ylab="Proportion killed",ylim=c(-0.1,1.1))
+lines(logdose, prob.pred.bt)
+```
+
+### Model checking 
+
+```{r}
+## Deviance difference test (Null model vs Saturated model)
+insect.glm1 <- glm(SF ~ 1, data = data.temp, family = "binomial")
+anova(insect.glm1, insect.glm, test = "Chisq") 
+
+## Could just use because we only have 1 predictor
+anova(insect.glm, test = "Chisq") 
+```
+
+```{r}
+## Walds test - example calculation for Dose
+summary(insect.glm)
+
+z <- 34.270/2.912
+z
+p <- (1-pnorm(abs(z)))*2
+p
+```
+
+Fit the model using generalized linear model function - estimate dispersion 
+
+```{r}
+## We can test for overdispersion using Peason's chi square Goodness of Fit stat:
+1-pchisq(11.232, 6)
+
+## This gives a p-value of 0.081 and though not significant (p<0.05) it may suggest that the data may be evidence of overdispersed if you consider the small sample size (n=8) and the fact that the p-value is close to 0.05.
+```
+
+### Quasibinomial family
+
+```{r}
+## Therefore we use the quasibinomial family
+insect.glm2 <- glm(SF ~ Dose, data = data.temp, family = "quasibinomial")
+summary(insect.glm2)
+
+## The key is that the standard errors are adjusted by the dispersion parameter which is calculated using the
+## following calculation
+
+sum((insect.glm$weights * insect.glm$residuals^2))/6
+```
+
+## Examaple 2 - Titanic survival - Logistic regression - binary data i.e. 0 or 1 response
+
+Problem statement: Who survived the titanic? There were an estimated 2,224 passengers and crew aboard the Titanic, and more than 1,500 died, making it one of the deadliest commercial peacetime maritime disasters in modern history. Can we predict who survived using passenger records?
+
+The data for this exercise is given in the 'titanic.csv' file
+
+```{r}
+# load the data
+data = read.csv("titanic.csv")
+
+# a quick summary of the dataframe structure
+glimpse(data)
+```
+
+## Exploratory Data Analysis (EDA)
+
+The first step to become a good data-scientist is in analysing the data carefully before jumping in to the modelling. Without a thorough understanding about the data, fitting models using R will give no insights. The idea is to first understand the data given and gradually build up the model.
+
+In order to understand the data we are given, we will carryout an **Exploratory Data Analysis** first.
+
+```{r}
+# Set some custom colors for plots
+survival_colors <- c("#D73027", "#1A9850")  # Deep Red for Died, Rich Green for Survived
+class_colors <- c("#67000D", "#A50F15", "#EF3B2C")  # Shades of Red for Classes
+```
+
+We can first check the survival count, essentially to see if the data is **class balanced**
+
+```{r}
+# 🔹 Survival Count
+data %>%
+  count(Survived) %>%
+  ggplot(aes(x = factor(Survived), y = n, fill = factor(Survived))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Survival Count", x = "Survived", y = "Count") +
+  scale_fill_manual(values = survival_colors)
+```
+
+We can also check if the Age distribution has any influence on the survival
+
+```{r}
+ggplot(data, aes(x = Age, fill = factor(Survived))) +
+  geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
+  labs(title = "Age Distribution by Survival", x = "Age", y = "Count") +
+  scale_fill_manual(values = survival_colors)
+```
+
+World is not always fair. Since we have access to the different class tickets purchased, we can assess if there is a relationship between the survival and the class of ticket purchased.
+
+```{r}
+# 🔹 Survival Rate by Class
+data %>%
+  count(Pclass, Survived) %>%
+  ggplot(aes(x = factor(Pclass), y = n, fill = factor(Survived))) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Survival Rate by Passenger Class", x = "Passenger Class", y = "Proportion") +
+  scale_fill_manual(values = survival_colors)
+```
+
+At least in the 'Titanic' movie, we saw that the children and women were given priority in the life saving boats. We can actually check if this was the case by analysing the different survival counts by the sex
+
+```{r}
+# 🔹 Survival Rate by Gender
+data %>%
+  count(Sex, Survived) %>%
+  ggplot(aes(x = Sex, y = n, fill = factor(Survived))) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Survival Rate by Gender", x = "Gender", y = "Proportion") +
+  scale_fill_manual(values = survival_colors)
+```
+
+One very important point (often missed) in building up statistical models is in the assumption of the 'independence' of covariates. For example, we would expect the 'ticket price' to be higher for the 'First Class' patrons. The tricky bit here is, if we use the 'ticket price' and 'class' as our covariates, they may actually give similar information as they are not 'independent'. Let's check if there is any relationship between the 'ticket price' and the 'class'
+
+```{r}
+# 🔹 Boxplot of Fare by Class
+ggplot(data, aes(x = factor(Pclass), y = Fare, fill = factor(Pclass))) +
+  geom_boxplot(alpha = 0.8, color = "black") +
+  labs(title = "Fare Distribution by Class", x = "Passenger Class", y = "Fare") +
+  scale_fill_manual(values = class_colors) +
+  theme_minimal()
+```
+
+We are only getting started with the 'EDA'. There are so many different combinations to check, but we will not do all that. In fact, it may even be not necessary. Some 'Prior' knowledge about the mechanics of the processes will help us narrow down the important covariates.
+
+Sometimes, the relationship between the survival could depend upon age and the class of the ticket purchased **jointly**
+
+```{r}
+# 🔹 Relationship Between Age & Fare
+ggplot(data, aes(x = Age, y = Fare, color = factor(Survived))) +
+  geom_point(alpha = 0.6, size = 2) +
+  labs(title = "Scatterplot of Age vs Fare", x = "Age", y = "Fare") +
+  scale_color_manual(values = survival_colors) +
+  theme_minimal()
+```
+
+## Fitting a GLM
+
+In our example case, we will only select
+
+-   the class of the ticket
+-   the age of the patron
+-   the sex of the patron
+
+to be the features in predicting the survival.
+
+We will also remove 'Na' rows as this can be problematic when fitting the logistic regression model.
+
+```{r}
+
+titanic_train <- data %>%
+  select(Survived, Pclass, Sex, Age) %>%
+  drop_na() 
+
+```
+
+Next we will use the `glm()` function in R.
+
+The relationship can be written as
+
+Survival \~ Class + Sex + Age
+
+```{r, echo=FALSE}
+model <- glm(Survived ~ Pclass + Sex + Age, family=binomial, data=titanic_train) 
+
+# summary will output several model diagnostics
+summary(model) 
+```
+We are going to jump straight into model prediction even before checking ** Model Diagnostics** just because we are so curious to see how the model performs.
+
+## Model Predictions
+
+```{r}
+# Add predicted probabilities to the dataset
+
+titanic_train <- titanic_train %>%
+  mutate(Predicted_Prob = predict(model, type = "response"))
+```
+
+Next we will plot the predicted survival probabilities with respect to each predictor.
+
+```{r}
+ggplot(titanic_train, aes(x = factor(Pclass), y = Predicted_Prob, fill = factor(Pclass))) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("#E63946", "#F4A261", "#2A9D8F")) +
+  labs(title = "Predicted Survival Probability by Passenger Class",
+       x = "Passenger Class", y = "Predicted Probability of Survival") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(titanic_train, aes(x = factor(Sex), y = Predicted_Prob, fill = Sex)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("#E63946", "#2A9D8F")) +
+  labs(title = "Predicted Survival Probability by Sex",
+       x = "Sex", y = "Predicted Probability of Survival") +
+  theme_minimal()
+
+```
+Next we can also check how our model's predictions compares with the actual survival.
+
+```{r}
+titanic_train <- titanic_train %>%
+  mutate(Predicted_Survived = ifelse(Predicted_Prob > 0.5, 1, 0),
+         Predicted_Survived = factor(Predicted_Survived),
+         Survived = factor(Survived))  # Ensure actual survival is a factor
+```
+
+```{r}
+conf_matrix <- titanic_train %>%
+  group_by(Survived, Predicted_Survived) %>%
+  summarise(count = n(), .groups = "drop")
+```
+
+```{r}
+ggplot(conf_matrix, aes(x = factor(Survived), y = factor(Predicted_Survived), fill = count)) +
+  geom_tile(color = "black") +
+  geom_text(aes(label = count), size = 6, color = "white") +
+  scale_fill_gradient(low = "#E63946", high = "#2A9D8F") +
+  labs(title = "Confusion Matrix",
+       x = "Actual Survival", y = "Predicted Survival", fill = "Count") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(titanic_train, aes(x = Survived, fill = Predicted_Survived)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = c("#E63946", "#2A9D8F")) +
+  labs(title = "Proportion of Predicted Survival per Actual Outcome",
+       x = "Actual Survival", y = "Proportion", fill = "Predicted Survival") +
+  theme_minimal()
+
+```
+
+
+```{r}
+accuracy <- mean(titanic_train$Predicted_Survived == titanic_train$Survived)
+print(paste("Model Accuracy:", round(accuracy * 100, 2), "%"))
+```
+
+Not too bad considering we spent less than 20 minutes in the **EDA** and used only 3 features. 
+
+Exercise: Try using other features available and see if you can get an improved confusion matrix.
+
+
+## Model Diagnostics
+
+What can you say from the above model diagnostics?
+
+We will check Residual Deviance, Pearson's Deviance and the Overdispersion of our model.
+
+```{r}
+# 1️⃣ Residual Deviance and Pearson Residuals
+titanic_train$deviance_resid <- residuals(model, type = "deviance")
+titanic_train$pearson_resid  <- residuals(model, type = "pearson")
+```
+
+```{r}
+ggplot(titanic_train, aes(x = factor(Age), y = deviance_resid, color = factor(Survived))) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  scale_color_manual(values = c("#E63946", "#2A9D8F")) +  # Nice red-green shades
+  labs(title = "Deviance Residuals", y = "Deviance Residuals", x = "Age") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(titanic_train, aes(x = factor(Age), y = pearson_resid, color = factor(Survived))) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  scale_color_manual(values = c("#E63946", "#2A9D8F")) +  # Nice red-green shades
+  labs(title = "Pearson Residuals", y = "Pearson Residuals", x = "Age") +
+  theme_minimal()
+```
+
+```{r}
+
+#2️⃣ Calculate overdispersion
+
+overdispersion <- sum(residuals(model, type = "deviance")^2) / model$df.residual
+cat("Overdispersion Factor (ϕ):", overdispersion, "\n")
+if (overdispersion > 1) {
+  cat("⚠️ Overdispersion detected! Consider using quasibinomial.\n")
+} else {
+  cat("✅ No significant overdispersion detected.\n")
+}
+```
+```{r}
+#3️⃣ Calculate the coefficient of determination
+
+# Extract null and residual deviance
+null_dev <- model$null.deviance
+resid_dev <- model$deviance
+
+# Compute R²
+R2 <- 1 - ((null_dev-resid_dev) / null_dev)
+cat("Coefficient of determination:", R2)
+```
+
+

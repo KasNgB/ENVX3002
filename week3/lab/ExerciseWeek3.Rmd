@@ -1,0 +1,113 @@
+---
+title: "ExerciseWeek3"
+author: "Kasper Ng Bergan"
+date: "2026-03-10"
+output: html_document
+---
+
+# Task 1a)
+```{r}
+lyrebird <- read.csv("data/BACI_data.csv", header = TRUE)
+str(lyrebird)
+
+lyrebird$Site <- factor(lyrebird$Site, levels = c("Control", "Impact"))
+lyrebird$Time <- factor(lyrebird$Time, levels = c("Before", "Season1", "Season2"))
+str(lyrebird)
+```
+
+# Task 1b)
+```{r}
+lyrebird.aov <- aov(Response ~ Site*Time, data = lyrebird)
+summary(lyrebird.aov)
+```
+
+# Task 1c)
+```{r}
+library(performance)
+check_model(lyrebird.aov)
+```
+
+# Task 1d)
+```{r}
+library(emmeans)
+emmeans(lyrebird.aov, pairwise ~ Site:Time)
+```
+
+# Task 1d)
+```{r}
+emmip(lyrebird.aov, Site ~ Time, CIs = TRUE)
+```
+
+# Task 2a)
+```{r}
+chickens <- read.csv("data/Chicken diet trial.csv", header = TRUE)
+str(chickens)
+
+chickens$Block <- as.factor(chickens$Block)
+chickens$Diet <- factor(chickens$Diet, c("Control", "Low", "High"))
+str(chickens)
+```
+
+# Task 2b)
+```{r}
+boxplot(chickens$Wt_Gain ~ chickens$Diet)
+chickens.aov <- aov(Wt_Gain ~ Diet, data = chickens)
+summary(chickens.aov)
+```
+
+# Task 2c)
+```{r}
+d.control <- 1 * (chickens$Diet == "Control")
+d.Low <- 1 * (chickens$Diet == "Low")
+d.High <- 1 * (chickens$Diet == "High")
+```
+
+# Task 2d)
+```{r}
+summary(lm(Wt_Gain ~ d.control + d.Low + d.High, data = chickens))
+summary(lm(Wt_Gain ~ d.control + d.Low, data = chickens))
+summary(lm(Wt_Gain ~ d.Low + d.High, data = chickens))
+```
+
+# Task 2e)
+```{r}
+chickens.lm <- lm(Wt_Gain ~ Diet, data = chickens)
+summary(chickens.lm)
+```
+
+# Task 3a)
+```{r}
+chickens.lm1 <- lm(Wt_Gain ~ Diet + Block, data = chickens)
+chickens.lm2 <- lm(Wt_Gain ~ Block + Diet, data = chickens)
+summary(chickens.lm1)
+summary(chickens.lm2)
+```
+
+# Task 3b)
+```{r}
+library(emmeans)
+emmeans(chickens.lm1, pairwise ~ Block:Diet)
+```
+
+# Task 3c)
+```{r}
+chicksm <- chickens
+chicksm$Wt_Gain[c(1,23)] <- NA
+summary(chicksm)
+```
+
+# Task 3d)
+```{r}
+chicksm.lm1 <- lm(Wt_Gain ~ Diet + Block, data = chicksm)
+chicksm.lm2 <- lm(Wt_Gain ~ Block + Diet, data = chicksm)
+anova(chicksm.lm1)
+anova(chicksm.lm2)
+summary(chicksm.lm1)
+summary(chicksm.lm2)
+```
+
+# Task 3e)
+```{r}
+library(emmeans)
+emmeans(chicksm.lm2, pairwise ~ Diet)
+```

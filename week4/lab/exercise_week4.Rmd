@@ -1,0 +1,121 @@
+---
+title: "exercise_week4"
+author: "Kasper Ng Bergan"
+date: "2026-03-17"
+output: html_document
+---
+
+# Task 1a)
+```{r}
+Quality <- c(0,0,0,1,1,0,1,1,1,1)
+Crunch <- c(13,22,29,41,44,46,48,63,67,74)
+```
+
+# Task 1b)
+```{r}
+plot(Crunch, Quality)
+```
+
+# Task 1c)
+```{r}
+qual.glm <- glm(Quality ~ Crunch, family = binomial)
+```
+
+# Task 1d)
+```{r}
+anova(qual.glm, test = "Chisq")
+summary(qual.glm)
+```
+
+# Task 1e)
+```{r}
+plot(predict(qual.glm) ~ Crunch, type = "b")
+```
+
+# Task 1f)
+```{r}
+plot(predict(qual.glm, type = "response") ~ Crunch, type = "b")
+```
+
+# Task 1g)
+```{r}
+crunch.df <- data.frame(Crunch = 0:80) # values 0,1,...,80
+pred.qual <- predict(qual.glm, crunch.df, type = "response")
+plot(pred.qual ~ crunch.df$Crunch, type = "l")
+```
+
+# Task 1h)
+```{r}
+plot(pred.qual ~ crunch.df$Crunch, type = "l")
+points(Quality ~ Crunch, data = data.frame(Quality, Crunch), pch = 16, col = "red")
+```
+
+# Task 2a)
+```{r}
+cattle <- read.csv("data/Shocked cattle.csv")
+str(cattle)
+
+cattle$Cow <- as.factor(cattle$Cow)
+cattle$Period <- as.factor(cattle$Period)
+str(cattle)
+```
+
+# Task 2b)
+```{r}
+twitch.mat <- cbind(cattle$Twitch, 5-cattle$Twitch)
+head(twitch.mat)
+```
+
+# Task 2c)
+```{r}
+twitch.glm <- glm(twitch.mat ~ Current, data = cattle, family = binomial)
+anova(twitch.glm)
+summary(twitch.glm)
+
+twitch.glm_quasi <- glm(twitch.mat ~ Current, data = cattle, family = quasibinomial)
+anova(twitch.glm_quasi)
+summary(twitch.glm_quasi)
+```
+
+# Task 2d)
+```{r}
+twitch.glm1 <- glm(twitch.mat ~ Current + Cow + Period, data = cattle, family = quasibinomial)
+```
+
+# Task 2e)
+```{r}
+anova(twitch.glm1, test = "F")
+summary(twitch.glm1)
+
+twitch.glm.xCur <- glm(twitch.mat ~ Cow + Period, data = cattle, family = quasibinomial)
+anova(twitch.glm.xCur, twitch.glm1, test = "F")
+```
+
+# Task 2f)
+```{r}
+twitch.glm2 <- glm(twitch.mat ~ Current * Period + Cow, data = cattle, family = quasibinomial)
+anova(twitch.glm2, test = "F")
+summary(twitch.glm2)
+```
+
+# Task 2g)
+```{r}
+anova(twitch.glm1, twitch.glm2, test = "F")
+drop1(twitch.glm1, test = "F")
+```
+
+# Task 2h)
+```{r}
+cattle.pred.df <- expand.grid(Cow = as.factor(1:7),
+  Current = seq(0,5,0.1),
+  Period = as.factor(1:2))
+  head(cattle.pred.df)
+  
+cattle.pred.df$twitch.pred <- predict(twitch.glm1, cattle.pred.df,
+  type = "response")
+  head(cattle.pred.df)
+  
+library(lattice)
+xyplot(twitch.pred ~ Current | Period, group = Cow, type = "l",
+data = cattle.pred.df)
+```

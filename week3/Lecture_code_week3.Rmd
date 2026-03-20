@@ -1,0 +1,339 @@
+  ---
+title: "Lecture 3: BACI designs and Linear models"
+output:
+  html_document:
+    highlight: tango
+    toc: yes
+    toc_float:
+      collapsed: no
+---
+
+# ENVX3002 Topic 2: ANOVA and its extensions - BACI design
+
+## Generate data for a BACI anova design
+```{r}
+
+# Load necessary library
+library(dplyr)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Define parameters
+n <- 50  # number of observations per group
+mu_before_control <- 10  # mean response in control site before intervention
+mu_before_impact <- 10  # mean response in impact site before intervention
+mu_after_control <- 10  # mean response in control site after intervention
+mu_after_impact <- 15  # mean response in impact site after intervention (effect of intervention)
+sd <- 2  # standard deviation of response
+
+# Simulate data and set level order for the factors
+data <- data.frame(
+  Site = rep(c("Control", "Impact"), each = 2*n),
+  Time = rep(c("Before", "After"), each = n, times = 2),
+  Response = c(
+    rnorm(n, mu_before_control, sd),
+    rnorm(n, mu_after_control, sd),
+    rnorm(n, mu_before_impact, sd),
+    rnorm(n, mu_after_impact, sd)
+  )
+) %>% 
+  mutate(Site = factor(Site, levels = c("Control", "Impact")),
+         Time = factor(Time, levels = c("Before", "After")))
+
+
+# Print the first few rows of the data
+head(data)
+
+```
+
+
+## Anova analysis of BACI design
+```{r}
+model <- aov(Response ~ Site*Time, data = data)
+
+# Print the summary of the model
+summary(model)
+
+```
+
+## Post-hoc test
+```{r}
+library(emmeans)
+emmeans(model, pairwise ~ Site:Time)
+
+```
+
+
+## Plotting results
+```{r}
+
+emmip(model, Site ~ Time, CIs = TRUE)
+
+```
+
+## Test assumptions of ANOVA
+```{r}
+
+par(mfrow=c(2,2))
+plot(model)
+par(mfrow=c(1,1))
+
+```
+
+
+```{r}
+# Test assumptions of ANOVA using performance package
+library(performance)
+check_model(model)
+```
+
+
+# Beyond BACI design
+
+## Generate code for a Beyond BACI design: add two control sites and one impact site
+
+```{r}
+# Load necessary library
+library(dplyr)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Define parameters
+n <- 50  # number of observations per group
+mu_before_control <- 10  # mean response in control site before intervention
+mu_before_impact <- 10  # mean response in impact site before intervention
+
+mu_after_control <- 10  # mean response in control site after intervention
+mu_after_impact <- 15  # mean response in impact site after intervention (effect of intervention)
+
+sd <- 2  # standard deviation of response
+
+# Simulate data and set level order for the factors
+data <- data.frame(
+  Site = rep(c("Control1", "Control2", "Impact"), each = 2*n),
+  Time = rep(c("Before", "After"), each = n, times = 3),
+  Response = c(
+    rnorm(n, mu_before_control, sd),
+    rnorm(n, mu_after_control, sd),
+    rnorm(n, mu_before_control, sd),
+    rnorm(n, mu_after_control, sd),
+    rnorm(n, mu_before_impact, sd),
+    rnorm(n, mu_after_impact, sd)
+  )
+) %>% 
+  mutate(Site = factor(Site, levels = c("Control1", "Control2", "Impact")),
+         Time = factor(Time, levels = c("Before", "After")))
+# Print the first few rows of the data
+head(data)
+
+
+
+```
+
+
+## Anova analysis of Beyond BACI design
+```{r}
+model <- aov(Response ~ Site*Time, data = data)
+
+# Print the summary of the model
+summary(model)
+
+```
+
+## Post-hoc test
+```{r}
+
+emmeans(model, pairwise ~ Site:Time)
+
+```
+
+## Plotting results
+```{r}
+
+emmip(model, Site ~ Time, CIs = TRUE)
+
+```
+
+## Test assumptions of ANOVA
+```{r}
+
+par(mfrow=c(2,2))
+plot(model)
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+# Test assumptions of ANOVA using performance package
+check_model(model)
+```
+
+
+
+# ENVX3002 Topic 3: General linear model - R code for Lectures
+
+## Analysis of chick weights via regression on indicator variables
+
+```{r}
+chicks <- read.csv("Chick weights.csv")
+str(chicks)
+chicks$Diet <- as.factor(chicks$Diet)
+str(chicks)
+```
+
+```{r}
+aggregate(WtGain ~ Diet, mean, data = chicks)
+```
+
+```{r}
+chicks.aov <- aov(WtGain ~ Diet, data = chicks)
+summary(chicks.aov)
+```
+
+### Fit model using indicator variables
+
+```{r}
+d1 <- 1 * (chicks$Diet == 1)
+d2 <- 1 * (chicks$Diet == 2)
+d3 <- 1 * (chicks$Diet == 3)
+d4 <- 1 * (chicks$Diet == 4)
+data.frame(chicks$Diet, d1, d2, d3, d4)
+```
+
+```{r}
+summary(lm(WtGain ~ d1 + d2 + d3 + d4, data = chicks))
+```
+
+```{r}
+chicks.refl.lm <- lm(WtGain ~ d2 + d3 + d4, data = chicks)
+summary(chicks.refl.lm)
+```
+
+```{r}
+chicks.ref4.lm <- lm(WtGain ~ d1 + d2 + d3, data = chicks)
+summary(chicks.ref4.lm)
+```
+
+### Fit model using Diet as categorical varable
+
+```{r}
+chicks.lm <- lm(WtGain ~ Diet, data = chicks)
+summary(chicks.lm)
+```
+
+## Analysis of sheep weaning weights via a general linear model
+
+```{r}
+sheep <- read.csv("Kenya sheep.csv")
+str(sheep)
+sheep$Breed <- as.factor(sheep$Breed)
+str(sheep)
+```
+
+```{r}
+summary(sheep)
+```
+
+```{r}
+plot(WeanWt ~ BirthWt, data = sheep)
+```
+
+```{r}
+plot(WeanWt ~ BirthWt, xlab = "Birth weight (kg)", ylab = "Weaning weight (kg)",
+   col = 1:4, cex = 0.5, data = sheep)
+legend("topleft", levels(sheep$Breed), pch = 1, col = 1:4) # note we changed Breed to be a factor above to take advantage of plotting levels as different colours
+
+```
+
+### Fit main effects model
+
+```{r}
+sheep.lm1 <- lm(WeanWt ~ BirthWt + Breed, data = sheep)
+summary(sheep.lm1)
+```
+
+```{r}
+drop1(sheep.lm1, test = "F")
+
+```
+
+```{r}
+anova(sheep.lm1, test = "F")
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(sheep.lm1, which = 1)
+plot(sheep.lm1, which = 2)
+par(mfrow=c(1,2))
+```
+
+### Fit model with interaction
+
+```{r}
+sheep.lm2 <- lm(WeanWt ~ BirthWt * Breed, data = sheep)
+summary(sheep.lm2)
+```
+
+```{r}
+anova(sheep.lm2, test = "F")
+```
+
+### Plot fitted model - no interaction
+
+```{r}
+(sheep.pred.df <- with(sheep,
+   expand.grid(BirthWt = c(min(BirthWt), max(BirthWt)),
+               Breed = levels(Breed))))
+```
+
+```{r}
+
+WeanWt.pred <- predict(sheep.lm1, sheep.pred.df)
+
+(sheep.pred.df <- cbind(sheep.pred.df, WeanWt.pred))
+```
+
+```{r}
+plot(WeanWt ~ BirthWt, xlab = "Birth weight (kg)", ylab = "Weaning weight (kg)",
+   col = Breed, cex = 0.5, data = sheep)
+legend("topleft", levels(sheep$Breed), pch = 1, col = 1:4)
+
+lines(sheep.pred.df[1:2, -2], col = 1) # Breed 1, DD
+lines(sheep.pred.df[3:4, -2], col = 2) # Breed 2, DR
+lines(sheep.pred.df[5:6, -2], col = 3) # Breed 3, RD
+lines(sheep.pred.df[7:8, -2], col = 4) # Breed 4, RR
+
+
+
+mean.WW <- mean(sheep$WeanWt, na.rm = TRUE)
+mean.BW <- mean(sheep$BirthWt, na.rm = TRUE)
+
+abline(h = mean.WW, lty = 2, col = "grey")
+abline(v = mean.BW, lty = 2, col = "grey")
+
+```
+
+### Plot fitted model - with interaction (for illustration only)
+
+```{r}
+plot(WeanWt ~ BirthWt, xlab = "Birth weight (kg)", ylab = "Weaning weight (kg)",
+   col = Breed, cex = 0.5, data = sheep)
+legend("topleft", levels(sheep$Breed), pch = 1, col = 1:4)
+
+sheep.pred.df <- with(sheep,
+   expand.grid(BirthWt = c(min(BirthWt), max(BirthWt)),
+               Breed = levels(Breed)))
+
+WeanWt.pred <- predict(sheep.lm2, sheep.pred.df)
+sheep.pred.df <- cbind(sheep.pred.df, WeanWt.pred)
+
+lines(sheep.pred.df[1:2, -2], col = 1) # Breed 1, DD
+lines(sheep.pred.df[3:4, -2], col = 2) # Breed 2, DR
+lines(sheep.pred.df[5:6, -2], col = 3) # Breed 3, RD
+lines(sheep.pred.df[7:8, -2], col = 4) # Breed 4, RR
+abline(h = mean.WW, lty = 2, col = "grey")
+abline(v = mean.BW, lty = 2, col = "grey")
+```

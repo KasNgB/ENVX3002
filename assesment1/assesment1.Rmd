@@ -1,0 +1,103 @@
+In this study we investigated whether fire treatment, species, or a combination of these two factors has a significant effect on growth rate. The experimental design follows a split-plot structure. Five blocks were placed across the Blue Mountains, each containing three fire treatments: unburnt, low severity, and high severity. Each of the three species was randomly allocated to each wildfire treatment.
+
+Hypotheses:
+  H0: Fire treatment has no significant effect on plant growth
+  H1: Fire treatment has a significant effect on plant growth
+  
+  H0: Species has no significant effect on plant growth
+  H1: Species has a significant effect on plant growth
+  
+  H0: There is no significant interaction between fire treatment and species on growth
+  H1: There is a significant interaction between fire treatment and species on growth
+
+```{r}
+# Read data and correct the formatting
+specieGrowth <- read.csv("data/assessment1.csv")
+str(specieGrowth)
+
+# plot, splots, block, species are int. Need to make them factor
+specieGrowth$plots <- as.factor(specieGrowth$plots)
+specieGrowth$splots <- as.factor(specieGrowth$splots)
+specieGrowth$block <- as.factor(specieGrowth$block)
+specieGrowth$Species <- as.factor(specieGrowth$Species)
+str(specieGrowth)
+```
+
+Model used:
+  SpecieGrowth_ijk = mean + Block_i + Treatment_j + Species_k + WPlot_ij + (Treatment x Species)_ik + e_ijk
+  
+  Where:
+    SpecieGrowth_ijk = Observed growth 
+    mean = Overall mean growth
+    Block_i = Block effect 
+    Treatment_j = Treatment effect 
+    Species_k = Species effect 
+    WPlot_ij = Whole plot random effect
+    (Treatment x Species)_jk = Treatment x Species interaction effect
+    e = sub plot random error
+    
+This model was used because the experimental design follows a split-plot structure. Five blocks were established across the Blue Mountains National Park. Within each block, plots were assigned one of three wildfire treatments: unburnt, low severity, and high severity. Each plot was then divided into subplots, where the three different plant species were randomly grown. The growth of each species was subsequently measured within each subplot.
+  
+```{r}
+# Look at boxplot and make ANOVA model
+library(lattice)
+bwplot(y ~ Treatment | Species, data=specieGrowth)
+
+specieGrowth.aov <- aov(y ~ Treatment * Species + Error(plots), data = specieGrowth)
+summary(specieGrowth.aov)
+```
+
+```{r}
+# Checks assumptions for model
+plot(lm(specieGrowth.aov), which = 1)
+plot(lm(specieGrowth.aov), which = 2)
+```
+
+These plots check the model assumptions of equal variance of residuals and normality of residuals. From the plots it appears that these assumptions are met by the model. There is no funnelling pattern in the residuals vs fitted plot. Variance is scattered randomly around zero, and the red line stays for the most part horizontal along the dotted line, except for a small deviation around the middle and a few outliers (2, 21, 27). This suggests that the assumption of equal variance of residuals is met. In the Q-Q plot the data points follow the predicted line fairly well. Along the middle of the line the points follow very closely, although they deviate slightly at both ends, but this is not significant enough to violate the assumption of normality. Independence of observations was supported by the spatial separation of blocks across the Blue Mountains National Park, minimising the risk of treatment contamination between plots. The random placement of species within subplots also helped ensure independence by reducing systematic bias.
+
+```{r}
+library(emmeans)
+
+emmeans(specieGrowth.aov, c("Treatment", "Species"))
+emmeans(specieGrowth.aov, pairwise ~ Treatment| Species)
+
+emmip(specieGrowth.aov, Treatment ~ Species, CIs = TRUE)
+```
+
+The ANOVA output shows that species, treatment individually, and the combination of the two significantly affect growth. From the above graph it is apparent that growth is highly dependent on the combination of fire treatment and species, as shown by the diverging and crossing lines. Species 1 has not too dissimilar growth for high fire treatment and low fire treatment, but sees a large drop in growth in unburnt areas. This indicates that this species has adapted to fire and benefits from burning. Species 2 performs similarly in high severity areas and unburnt areas, and it is worth noting the large drop in growth in areas with low fire treatment. Species 3 performs considerably better in unburnt areas and has a similar drop in both high and low fire treated areas. This species appears to be fire sensitive and does not gain any advantages from burning.
+
+For restoration in areas with high fire treatment, species 1 is the best alternative, with the highest performance and a mean of 8.6 compared to a mean of 7.6 for the next best performer. For low fire treatment areas, species 2 performs much worse than the other species, with species 1 performing best with a mean of 6.6. Species 3 is also a viable option with a mean of 5.6. For unburnt areas, species 3 dominates and performs considerably better than species 1 and 2, with a mean value of 17.6 compared to 8.4 for the second best performer.
+
+The results of this study show that species 1 and 2 maintained similar or higher growth rates in high severity plots compared to unburnt areas, whilst species 3 underperformed considerably in low and high treatment areas compared to unburnt areas. These findings are partly consistent with other findings from the scientific literature on post-fire ecology.
+
+The strong performance of species 1 and 2 in high fire treatment zones aligns with the findings of Rogers, Mehnaz and Ellsworth (2019), who hypothesised that severe burning would lead to higher rates of photosynthesis in woody plants due to a transient release from leaf nutrient and water limitations, facilitating biomass recovery post-burn. Their research found that recent burning produced a 20% increase in net photosynthetic rate compared to unburnt areas. This increased rate may help explain the rapid growth of some species after a fire.
+
+A study by Lentile et al. (2007) also found fast regrowth after fire, but the comparison between low severity and high severity areas does not align with the results from this study. In the present study, growth in low severity areas consistently does not outperform growth in high severity areas. In contrast, Lentile et al. (2007) consistently predicted that low severity areas would outperform high severity areas, with total organic matter and mean vegetation cover both being consistently lower in high severity zones. This differs considerably from the present results, where high severity areas consistently performed better or comparably in terms of growth.
+
+Some Australian plants can flourish after bushfire, having evolved strategies for recovery such as resprouting and seed dispersal (Commander and Zimmer, 2020). One important aspect highlighted in their article is the variation between species, with some plants being sensitive to fire and requiring assistance to recover. Species 1 and 2 appear to be more resistant and better adapted to high fire treatment, while species 3 appears more sensitive.
+
+This study shows that fire treatment, species, and the interaction between these two factors are significantly related to growth rate. These findings are supported by existing research, which similarly documents rapid regrowth after wildfire and species-level differences in fire response. For restoration in high and low treatment areas, species 1 is the recommended choice due to its consistently high growth rate. Species 2 also performs well in high treatment areas but is not recommended for low treatment areas.
+
+AI acknowledgment:
+  AI used chatGPT. I used AI to give me a quick easy to understand summary of different scientific literature. I also used AI to check if I had met all requirements of the task.
+  
+  "Have I asnwered all aspects of the task"
+  
+  "give me a quick overview of this file both what they want to find out and what the results are explained easiliy  
+   https://www.dpi.nsw.gov.au/__data/assets/pdf_file/0019/320626/Pasture-recovery-after-bushfires.pdf"
+   
+   "same to this https://www.nature.com/articles/s41467-021-27225-4"
+   
+  When the response from the AI looked like something I was interested in I read the papers in more detail to confirm or deny if the paper actually was of interest or not. To            validate if these papers were legit i chcked the   publisher to confirm that the papers were published by trustworthy people.
+
+
+Reference list:
+
+(Erin I E Rogers,Kazi R Mehnaz, David S Ellsworth, 2019) Stimulated photosynthesis of regrowth after fire in coastal scrub vegetation: increased water or nutrient availability?
+https://academic.oup.com/treephys/article/44/8/tpae079/7705536 
+
+(Leigh B.Lentile, Penelope Morgan, Andrew T. Hudak, Micheal J. Bobbitt, Sarah A. Lewis, Alistar M. S. Smith & Peter R. Robichaud, 2007) Post-Fire Burn Severity and Vegetation Response Following Eight Large Wildfires Across the Western United States
+https://link.springer.com/article/10.4996/fireecology.0301091 
+
+(Lucy Commander & Heidi Zimmer, 2020) Yes, native plants can flourish after bushfire. But there’s only so much hardship they can take
+https://theconversation.com/yes-native-plants-can-flourish-after-bushfire-but-theres-only-so-much-hardship-they-can-take-129748
